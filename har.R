@@ -5,9 +5,8 @@ training<-read.csv("pml-training.csv")
 
 # leave out not needed input attributes
 tr <- training[,8:159]
-# convert factors (csv reading behaviour) to numbers
+# convert factors to numbers
 types <- sapply(tr,class)
-
 f<-function(x) {x<-as.numeric(x)}
 tr[,which(types != "numeric")]<-sapply(tr[,which(types != "numeric")],f)
 
@@ -16,9 +15,13 @@ f<-function(x) { sum(is.na(x)) > length(x) *0.7}
 leaveout <- sapply(tr,f)
 tr <- tr[,-which(leaveout == T)]
 
-# final training dataset
+# final training dataset devided to train and test 70% - 30%
+set.seed(1)
 ftr <- cbind(tr,training$classe)
 names(ftr)[86] <- "classe"
+tr_ind<-createDataPartition(ftr$classe,p=0.7,list=F)
+ftr_tr <- ftr[tr_ind,]
+ftr_te <- ftr[-tr_ind,]
 
 #train with crossvalidation default 10 folds
 #and set classProbs to true for having the class probailities on the output
@@ -31,7 +34,13 @@ set.seed(1)
 # try naive bayes classification 
 #with assumption that sensors are measuring independent dimensions of the exercise
 library(klaR)
-mod <- train(classe ~ ., data = ftr, method = "nb", trControl = ctrl, preProcess="pca")
+#mod <- train(classe ~ ., data = ftr_tr, method = "nb", trControl = ctrl)
+#mod <- train(classe ~ ., data = ftr_tr, method = "nb", trControl = ctrl, preProcess="ica", n.comp=10)
+mod <- train(classe ~ ., data = ftr_tr, method = "rf")
+
+plot(mod$finalModel)
+fte_te_resp <- predict(mod,newdata=ftr_te)
+confusionMatrix(ftr_te_resp,ftr_te$classe)
 
 #
 # TESTING
@@ -48,3 +57,4 @@ f<-function(x) {x<-as.numeric(x)}
 te[,which(types != "numeric")]<-sapply(te[,which(types != "numeric")],f)
 
 te_resp <- predict(mod,newdata=ftr[1,],type="prob")
+confusionMatrix(t)

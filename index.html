@@ -4,10 +4,73 @@
 	<meta charset='utf-8' />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<link rel="stylesheet" type="text/css" media="all" href="style.css">
-	<title>gh-pages template</title>
+	<title>HAR prediction report</title>
 </head>
 <body>
-  <div id="helloworld">Hello world!</div>
-<img src="plot4.png">
+
+
+<b>Data Preprocessing</b>
+<blockquote>
+
+First read the training dataset from CSV format by:
+<br> > training<-read.csv("pml-training.csv")
+<br><br>
+There are attributes (the first 7) which are not relevant for prediction, live them out
+<br> > head(names(training),7)
+<br> [1] "X"             "user_name"            "raw_timestamp_part_1" "raw_timestamp_part_2"
+<br> [5] "cvtd_timestamp"       "new_window"           "num_window"  
+<br> > tr <- training[,8:159]
+<br><br>
+All the remaing attributes are the recorded signals coming from the sensors and their statistics, values has to be numeric, conversion needed
+<br> > types <- sapply(tr,class)
+<br> > f<-function(x) {x<-as.numeric(x)}
+<br> > tr[,which(types != "numeric")]<-sapply(tr[,which(types != "numeric")],f)
+<br><br>
+Attributes with count of is.na greater than 70% of the cases has not too much information value, they are deleted from training sample
+<br> > f<-function(x) { sum(is.na(x)) > length(x) *0.7}
+<br> > leaveout <- sapply(tr,f)
+<br> > tr <- tr[,-which(leaveout == T)]
+<br><br>
+Finally the "classe" output attribute is binded and training dataset is split to train and to test (70% - 30%), to have a good idea about out of sample error	
+<br> > set.seed(1)
+<br> > ftr <- cbind(tr,training$classe)
+<br> > names(ftr)[86] <- "classe"
+<br> > tr_ind<-createDataPartition(ftr$classe,p=0.7,list=F)
+<br> > ftr_tr <- ftr[tr_ind,]
+<br> > ftr_te <- ftr[-tr_ind,]
+</blockquote>
+
+<b>Model Training</b>
+<blockquote>
+Based on the assumption that sensors' signals are independent Naive Bayes classification model could be effective and therefore selected for analysis.
+<br>Set up trainControl with crossvalidation default 10 folds and classProbs for having the class probailities on the output
+<br> > ctrl <- trainControl(method="cv",number=10,returnData = F,returnResamp = "all", classProbs = T) 
+<br> > set.seed(1)
+<br> > library(klaR)
+<br> > mod <- train(classe ~ ., data = ftr_tr, method = "nb", trControl = ctrl)
+<br><br> Have a look how the model looks like, all predictor attribute densisities could be viewed with the plot function,  E.g. for magnet_arm_x attribute look at the image. 
+<br> > plot(mod$finalModel)
+<br><br> <img src="plot1.png">
+<br><br> Get predicting results on the testing dataset by the confusionMatrix function, accuracy looks good: 0.73, not too far from the <a href="http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises">publicated results on HAR homepage</a>
+<br> > fte_te_resp <- predict(mod,newdata=ftr_te)
+<br> > confusionMatrix(ftr_te_resp,ftr_te$classe)
+<br><br> <img src="plot2.png">
+</blockquote>
+
+<b>Model Testing</b>
+<blockquote>
+For model testing the provided test dataset (20 test cases) has to be read and transformed the same way as for training data:
+<br> > testing<-read.csv("pml-testing.csv")
+<br><br> Have only the relevant attributes
+<br> > te <- testing[,8:159]
+<br><br> Convert non-numeric attributes to numeric
+<br> > types <- sapply(te,class)
+<br> > f<-function(x) {x<-as.numeric(x)}
+<br> > te[,which(types != "numeric")]<-sapply(te[,which(types != "numeric")],f)
+<br><br> Predict test cases with type="prob" option to have and understanding on the probability for each output classes
+<br> > te_resp <- predict(mod,newdata=te,type="prob")
+
+</blockquote>
+
 </body>
 </html>
