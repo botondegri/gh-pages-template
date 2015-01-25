@@ -7,8 +7,13 @@
 	<title>HAR prediction report</title>
 </head>
 <body>
+<br>
+<b>
+Course project specified on <a href="https://class.coursera.org/predmachlearn-010/human_grading/view/courses/973545/assessments/4/submissions">assigment page</a>
+was done in data preprocessing, training and testing steps. Naive Bayes and Random Forest models were used.</b>
 
 
+<br><br>
 <b>Data Preprocessing</b>
 <blockquote>
 
@@ -26,7 +31,7 @@ All the remaing attributes are the recorded signals coming from the sensors and 
 <br> > f<-function(x) {x<-as.numeric(x)}
 <br> > tr[,which(types != "numeric")]<-sapply(tr[,which(types != "numeric")],f)
 <br><br>
-Attributes with count of is.na greater than 70% of the cases has not too much information value, they are deleted from training sample
+Attributes with count of missing values (NA) greater than 70% of the cases have not too much information value, they are deleted from training sample
 <br> > f<-function(x) { sum(is.na(x)) > length(x) *0.7}
 <br> > leaveout <- sapply(tr,f)
 <br> > tr <- tr[,-which(leaveout == T)]
@@ -38,6 +43,12 @@ Finally the "classe" output attribute is binded and training dataset is split to
 <br> > tr_ind<-createDataPartition(ftr$classe,p=0.7,list=F)
 <br> > ftr_tr <- ftr[tr_ind,]
 <br> > ftr_te <- ftr[-tr_ind,]
+<br><br>
+For missing value replacing, use median imputation method, trained on train sample, applied to both train and test
+<br> > prep <- preProcess(ftr_tr[-86],method="medianImpute")
+<br> > ftr_tr <- predict(prep,newdata=ftr_tr)
+<br> > ftr_te <- predict(prep,newdata=ftr_te)
+
 </blockquote>
 
 <b>Model Training</b>
@@ -48,7 +59,7 @@ Based on the assumption that sensors' signals are independent Naive Bayes classi
 <br> > set.seed(1)
 <br> > library(klaR)
 <br> > mod <- train(classe ~ ., data = ftr_tr, method = "nb", trControl = ctrl)
-<br><br> Have a look how the model looks like, all predictor attribute densisities could be viewed with the plot function,  E.g. for magnet_arm_x attribute look at the image. 
+<br><br> For model understaing all predictor attribute densisities could be viewed with the plot function,  E.g. for magnet_arm_x attribute look at the image below. 
 <br> > plot(mod$finalModel)
 <br><br> <img src="plot1.png">
 <br><br> Get predicting results on the testing dataset by the confusionMatrix function, accuracy looks good: 0.73, not too far from the <a href="http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises">publicated results on HAR homepage</a>
@@ -57,9 +68,21 @@ Based on the assumption that sensors' signals are independent Naive Bayes classi
 <br><br> <img src="plot2.png">
 </blockquote>
 
+
+<b>Model Training II.</b>
+<blockquote>
+Random Forest algorithm is checked as well with standard settings:
+<br> > set.seed(1)
+<br> > mod <- train(classe ~ ., data = ftr_tr, method = "rf")
+<br><br> Get predicting results on the testing dataset by the confusionMatrix function, accuracy much better: 0.9944, statistics shows even better results than publicated.
+<br> > fte_te_resp <- predict(mod,newdata=ftr_te)
+<br> > confusionMatrix(ftr_te_resp,ftr_te$classe)
+<br><br> <img src="plot3.png">
+</blockquote>
+
 <b>Model Testing</b>
 <blockquote>
-For model testing the provided test dataset (20 test cases) has to be read and transformed the same way as for training data:
+For model testing the provided test dataset (20 test cases) has to be read and transformed the same way as training data:
 <br> > testing<-read.csv("pml-testing.csv")
 <br><br> Have only the relevant attributes
 <br> > te <- testing[,8:159]
@@ -67,8 +90,13 @@ For model testing the provided test dataset (20 test cases) has to be read and t
 <br> > types <- sapply(te,class)
 <br> > f<-function(x) {x<-as.numeric(x)}
 <br> > te[,which(types != "numeric")]<-sapply(te[,which(types != "numeric")],f)
+<br><br> Delete the non-used attributes
+<br> > te <- te[,-which(leaveout == T)]
+<br><br> Apply median based imputation on missing values
+<br> > te2 <- predict(prep,newdata=te)
 <br><br> Predict test cases with type="prob" option to have and understanding on the probability for each output classes
-<br> > te_resp <- predict(mod,newdata=te,type="prob")
+<br> > te_resp <- predict(mod,newdata=te2,type="prob")
+
 
 </blockquote>
 

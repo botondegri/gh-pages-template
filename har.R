@@ -23,6 +23,11 @@ tr_ind<-createDataPartition(ftr$classe,p=0.7,list=F)
 ftr_tr <- ftr[tr_ind,]
 ftr_te <- ftr[-tr_ind,]
 
+# impute missing values with median
+prep <- preProcess(ftr_tr[-86],method="medianImpute")
+ftr_tr <- predict(prep,newdata=ftr_tr)
+ftr_te <- predict(prep,newdata=ftr_te)
+
 #train with crossvalidation default 10 folds
 #and set classProbs to true for having the class probailities on the output
 
@@ -39,7 +44,7 @@ library(klaR)
 mod <- train(classe ~ ., data = ftr_tr, method = "rf")
 
 plot(mod$finalModel)
-fte_te_resp <- predict(mod,newdata=ftr_te)
+ftr_te_resp <- predict(mod,newdata=ftr_te)
 confusionMatrix(ftr_te_resp,ftr_te$classe)
 
 #
@@ -56,5 +61,8 @@ types <- sapply(te,class)
 f<-function(x) {x<-as.numeric(x)}
 te[,which(types != "numeric")]<-sapply(te[,which(types != "numeric")],f)
 
-te_resp <- predict(mod,newdata=ftr[1,],type="prob")
-confusionMatrix(t)
+te <- te[,-which(leaveout == T)]
+
+te2 <- predict(prep,newdata=te)
+te_resp <- predict(mod,newdata=te2,type="prob")
+
